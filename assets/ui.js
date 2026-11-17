@@ -20,3 +20,37 @@ document.querySelectorAll('[data-research-filter]').forEach(button=>button.addEv
  document.addEventListener('forecast:draw',animateChart);animateChart();
  document.querySelectorAll('[data-research-filter]').forEach(button=>button.addEventListener('click',()=>document.querySelectorAll('.research-item:not([hidden])').forEach(enter)));
 })();
+
+// Vector arrows render consistently across desktop and mobile browsers.
+(() => {
+ const paths={
+  '\u2197':'M5 19 19 5M5 5h14v14',
+  '\u2198':'M5 5 19 19M5 19h14V5',
+  '\u2192':'M4 12h16M13 5l7 7-7 7',
+  '\u2190':'M20 12H4m7-7-7 7 7 7',
+  '\u2191':'M12 20V4m-7 7 7-7 7 7',
+  '\u2193':'M12 4v16m-7-7 7 7 7-7'
+ };
+ const pattern=/[\u2197\u2198\u2192\u2190\u2191\u2193]/;
+ const ignored='script,style,svg,textarea,select,option,code,pre';
+ function replaceText(node){
+  if(!node.parentElement||node.parentElement.closest(ignored)||!pattern.test(node.data))return;
+  const fragment=document.createDocumentFragment();
+  for(const part of node.data.split(/([\u2197\u2198\u2192\u2190\u2191\u2193])/)){
+   if(!paths[part]){if(part)fragment.append(document.createTextNode(part));continue}
+   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+   svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('width','16');svg.setAttribute('height','16');svg.setAttribute('fill','none');svg.setAttribute('stroke','currentColor');svg.setAttribute('stroke-width','1.7');svg.setAttribute('stroke-linecap','round');svg.setAttribute('stroke-linejoin','round');svg.setAttribute('aria-hidden','true');svg.setAttribute('focusable','false');svg.setAttribute('class','vector-arrow');
+   svg.style.cssText='display:inline-block;vertical-align:-0.15em;flex-shrink:0;overflow:visible';
+   const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',paths[part]);svg.append(path);fragment.append(svg);
+  }
+  node.replaceWith(fragment);
+ }
+ function scan(root){
+  if(root.nodeType===Node.TEXT_NODE){replaceText(root);return}
+  if(root.nodeType!==Node.ELEMENT_NODE||root.closest(ignored))return;
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);const nodes=[];let node;while((node=walker.nextNode()))if(pattern.test(node.data))nodes.push(node);nodes.forEach(replaceText);
+ }
+ scan(document.body);
+ const observer=new MutationObserver(records=>records.forEach(record=>{if(record.type==='characterData')replaceText(record.target);else record.addedNodes.forEach(scan)}));
+ observer.observe(document.body,{childList:true,subtree:true,characterData:true});
+})();
